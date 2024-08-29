@@ -1,18 +1,10 @@
-/**
- * Welcome to Cloudflare Workers! This is your first worker.
- *
- * - Run `npm run dev` in your terminal to start a development server
- * - Open a browser tab at http://localhost:8787/ to see your worker in action
- * - Run `npm run deploy` to publish your worker
- *
- * Bind resources to your worker in `wrangler.toml`. After adding bindings, a type definition for the
- * `Env` object can be regenerated with `npm run cf-typegen`.
- *
- * Learn more at https://developers.cloudflare.com/workers/
- */
+import { Hono } from 'hono';
+import { cors } from 'hono/cors';
+import OpenAI from 'openai';
 
-export default {
-	async fetch(request, env, ctx): Promise<Response> {
-		return new Response('Hello World!');
-	},
-} satisfies ExportedHandler<Env>;
+type Bindings = {
+	OPEN_AI_KEY: string; // 進行 OpenAI API 認證、操作
+	AI: Ai; // 進行其他 AI 的操作，e.g. Cloudflare
+};
+
+const app = new Hono<{ Bindings: Bindings }>();
