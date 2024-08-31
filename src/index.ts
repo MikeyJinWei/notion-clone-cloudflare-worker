@@ -9,6 +9,12 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
+app.get('/', (ctx) => {
+	// console.log('Hello, hono is working with cloudflare worker!');
+	return ctx.text('Hello, hono is working with cloudflare worker!');
+	// return new Response(null, { status: 204 });
+});
+
 // CORS 資源分享配置
 app.use(
 	'/*', // 允許的 req 路徑
