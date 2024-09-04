@@ -95,7 +95,7 @@ app.post('/chatToDocument', async (ctx) => {
 					content: 'My question is: ' + question,
 				},
 			],
-			model: 'gpt-4o',
+			model: 'gpt-4o-mini',
 			temperature: 0.5,
 		});
 
