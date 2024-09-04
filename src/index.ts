@@ -29,7 +29,6 @@ app.use(
 	})
 );
 
-// 待修正 start
 // 處理翻譯請求
 // POST req，路徑為 /translateDocument
 app.post('/translateDocument', async (ctx) => {
@@ -42,8 +41,8 @@ app.post('/translateDocument', async (ctx) => {
 	});
 
 	// 將摘要翻譯成其他語言
-	const response = (await ctx.env.AI.run)('@cf/meta/m2m100-1.2b', {
-		text: summaryResponse,
+	const response = await ctx.env.AI.run('@cf/meta/m2m100-1.2b', {
+		text: summaryResponse.summary,
 		source_lang: 'english',
 		target_lang: targetLang,
 	});
@@ -51,6 +50,5 @@ app.post('/translateDocument', async (ctx) => {
 	// 以 JSON 返回翻譯結果
 	return new Response(JSON.stringify(response));
 });
-// 待修正 end
 
 export default app;
