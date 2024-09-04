@@ -9,12 +9,6 @@ type Bindings = {
 
 const app = new Hono<{ Bindings: Bindings }>();
 
-app.get('/', (ctx) => {
-	// console.log('Hello, hono is working with cloudflare worker!');
-	return ctx.text('Hello, hono is working with cloudflare worker!');
-	// return new Response(null, { status: 204 });
-});
-
 // CORS 資源分享配置
 app.use(
 	'/*', // 允許的 req 路徑
@@ -29,26 +23,97 @@ app.use(
 	})
 );
 
-// 處理翻譯請求
-// POST req，路徑為 /translateDocument
+app.get('/', (ctx) => {
+	console.log('Microservice is running');
+
+	const message = {
+		status: 'Microservice is running',
+	};
+
+	ctx.status(200);
+
+	return ctx.json(message);
+});
+
+// 翻譯
 app.post('/translateDocument', async (ctx) => {
-	const { documentData, targetLang } = await ctx.req.json(); // 將 req body 從 JSON 解析成 JS object
+	try {
+		const { documentData, targetLang } = await ctx.req.json(); // 將 req body 從 JSON 解析成 JS object
 
-	// 生成文檔的摘要
-	const summaryResponse = await ctx.env.AI.run('@cf/facebook/bart-large-cnn', {
-		input_text: documentData,
-		max_length: 1000, // 指定摘要的最大長度
-	});
+		// 生成文檔的摘要
+		const summaryResponse = await ctx.env.AI.run('@cf/facebook/bart-large-cnn', {
+			input_text: documentData,
+			max_length: 1000, // 指定摘要的最大長度
+		});
 
-	// 將摘要翻譯成其他語言
-	const response = await ctx.env.AI.run('@cf/meta/m2m100-1.2b', {
-		text: summaryResponse.summary,
-		source_lang: 'english',
-		target_lang: targetLang,
-	});
+		// 將摘要翻譯成其他語言
+		const response = await ctx.env.AI.run('@cf/meta/m2m100-1.2b', {
+			text: summaryResponse.summary,
+			source_lang: 'english',
+			target_lang: targetLang,
+		});
 
-	// 以 JSON 返回翻譯結果
-	return new Response(JSON.stringify(response));
+		ctx.status(200);
+		// 以 Response obj 返回 JSON 翻譯結果
+		return new Response(JSON.stringify(response));
+	} catch (error: any) {
+		console.error('Translation Error:', error);
+
+		if (error instanceof SyntaxError) {
+			ctx.status(400);
+			return ctx.json({ error: 'Invalid request format.' });
+		}
+
+		ctx.status(500);
+		return ctx.json({ error: 'An error occurred during translation.' });
+	}
+});
+
+// 與 AI 討論當前文件
+app.post('/chatToDocument', async (ctx) => {
+	try {
+		// 使用 API key 初始化 OpenAI 客户端
+		const openai = new OpenAI({
+			apiKey: ctx.env.OPEN_AI_KEY,
+		});
+
+		// 從 req 中解構文件文檔及用戶提出的問題
+		const { documentData, question } = await ctx.req.json();
+
+		const chatCompletion = await openai.chat.completions.create({
+			messages: [
+				// 指導模型扮演系統角色回答用戶的問題
+				{
+					role: 'system',
+					content:
+						"You are an assistant helping the user to chat to a document. I am providing a JSON file of the markdown for the document. Using this, answer the user's question in the clearest way possible. The document is about " +
+						documentData,
+				},
+				// 扮演客戶端角色提及問題
+				{
+					role: 'user',
+					content: 'My question is: ' + question,
+				},
+			],
+			model: 'gpt-4o',
+			temperature: 0.5,
+		});
+
+		const response = chatCompletion.choices[0].message.content; // 存取 res 文本內容
+
+		ctx.status(200);
+		return ctx.json({ message: response }); // return JSON 格式的 res 給客戶端
+	} catch (error: any) {
+		console.error('Chat Error:', error);
+
+		if (error instanceof SyntaxError) {
+			ctx.status(400);
+			return ctx.json({ error: 'Invalid request format.' });
+		}
+
+		ctx.status(500);
+		return ctx.json({ error: 'An error occurred while processing the chat.' });
+	}
 });
 
 export default app;
