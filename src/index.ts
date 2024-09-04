@@ -29,6 +29,7 @@ app.use(
 	})
 );
 
+// 待修正 start
 // 處理翻譯請求
 // POST req，路徑為 /translateDocument
 app.post('/translateDocument', async (ctx) => {
@@ -50,5 +51,6 @@ app.post('/translateDocument', async (ctx) => {
 	// 以 JSON 返回翻譯結果
 	return new Response(JSON.stringify(response));
 });
+// 待修正 end
 
 export default app;
